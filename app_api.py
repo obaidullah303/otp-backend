@@ -3,6 +3,11 @@ import json, os, requests, re
 
 app = Flask(__name__)
 
+# Root Endpoint Added for Health Check
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({"status": "active", "message": "OTP Backend API is running successfully!"})
+
 API_KEY = "np_live_RITqag96DM9k3No9DXv-7ten5bEepMIYd-RkPuHm8Uw"
 BASE_URL = "https://numberpanel.tech"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
@@ -21,23 +26,26 @@ def load_data(file_path):
     return {}
 
 def save_data(file_path, data):
-    with open(file_path, "w") as f:
-        json.dump(data, f, indent=4)
+    try:
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception:
+        pass
 
 @app.route('/api/check_user', methods=['POST'])
 def check_user():
-    data = request.json
-    user_id = str(data.get("user_id"))
+    data = request.get_json(silent=True) or {}
+    user_id = str(data.get("user_id", ""))
     users = load_data(PREMIUM_FILE)
-    if user_id in users:
+    if user_id and user_id in users:
         return jsonify({"status": "success", "is_premium": True, "name": users[user_id]})
     return jsonify({"status": "success", "is_premium": False})
 
 @app.route('/api/get_number', methods=['POST'])
 def get_number():
-    data = request.json
-    service = data.get("service")
-    country = data.get("country")
+    data = request.get_json(silent=True) or {}
+    service = str(data.get("service", ""))
+    country = str(data.get("country", ""))
     clean_code = re.sub(r'[^A-Za-z]', '', country).upper()
     
     payload = {"service": service.lower(), "country": clean_code}
@@ -49,9 +57,9 @@ def get_number():
 
 @app.route('/api/admin/manage_user', methods=['POST'])
 def manage_user():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     action = data.get("action")
-    user_id = str(data.get("user_id"))
+    user_id = str(data.get("user_id", ""))
     name = data.get("name", "App User")
     
     users = load_data(PREMIUM_FILE)
